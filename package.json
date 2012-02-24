@@ -1,0 +1,38 @@
+{
+  "author": "Sergey Martynov <martynovs@gmail.com> (http://studiomobile.ru)",
+  "name": "oauth2-node",
+  "version": "0.3.1",
+  "homepage": "https://github.com/studiomobile/oauth2-node/",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/studiomobile/oauth2-node.git"
+  },
+  "keywords": [
+    "auth",
+    "oauth",
+    "facebook",
+    "google",
+    "twitter",
+    "dropbox",
+    "authorization",
+    "authentication",
+    "connect",
+    "express",
+    "server",
+    "client"
+  ],
+  "main": "index.js",
+  "engines": {
+    "node": ">= 0.6.x"
+  },
+  "dependencies": {
+	    "coffee-script": ">= 1.2.0"
+	  , "connect": ">= 1.8.0"
+		, "underscore": ">= 1.3.0"
+	  , "ua-parser": ">= 0.2.3"
+  },
+  "devDependencies": {},
+  "optionalDependencies": {
+    "redis": ">= 0.7.0"
+  }
+}
