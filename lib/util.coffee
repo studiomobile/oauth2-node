@@ -59,7 +59,7 @@ module.exports.dialog_display_type = (req) ->
 module.exports.parse_url = (url, data) ->
   switch typeof url
     when 'string'
-      URL.parse url.replace(/\{\{(.+?)\}\}/g, ($0, $1) -> data[$1] || '')
+      URL.parse url.replace(/\{\{(.+?)\}\}/g, ($0, $1) -> data[$1] || ''), true
     when 'function'
       url(data)
     else
