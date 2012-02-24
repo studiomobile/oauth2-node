@@ -16,11 +16,12 @@ module.exports = class OAuth2 extends require('./options')
   route: (path, name, options) ->
     @routes[path] = @gateway name, options
 
+  setup_routes: (app) =>
+    Object.keys(@routes).forEach (path) =>
+      app.get path, @routes[path]
+
   middleware: ->
-    routes = @routes
-    connect.router (app) ->
-      Object.keys(routes).forEach (path) ->
-        app.get path, routes[path]
+    connect.router @setup_routes
 
 
 OAuth2.Guard = Guard
