@@ -33,27 +33,24 @@ module.exports = class Gateway extends require('./options')
     throw new Error "Provided parseProfile is not a function" unless typeof parse_profile == 'function'
     
     displayType = @options.display
-    successPath = @options.successPath
+    successPath = @options.successPath or 'home'
     errorPath   = @options.errorPath
     sessionKey  = @options.sessionKey || 'oauth'
     
     (req, res, next) ->
     
       onError = (error) ->
-        # TODO: wrap to OAuth2.Error
         if errorPath
-          return res.redirect errorPath
+          res.redirect errorPath
         else
-          return next(error)
+          # TODO: wrap to OAuth2.Error
+          next(error)
 
       onSuccess = (auth) ->
         if session = req.session
           session[sessionKey] = auth
           session.save()
-        if successPath
-          return res.redirect successPath
-        else
-          return next()
+        res.redirect successPath
         
       url = URL.parse(req.url, true)
       query = url.query
