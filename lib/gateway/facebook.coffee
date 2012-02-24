@@ -10,6 +10,7 @@ module.exports = class Gateway extends require('../gateway')
 Gateway::parse_profile = (data, done) ->
   try
     data = JSON.parse data
+    return done data.error if data.error
     done null,
       provider: 'facebook'
       id: data.id
