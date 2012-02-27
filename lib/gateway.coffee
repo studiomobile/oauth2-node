@@ -33,32 +33,37 @@ module.exports = class Gateway extends require('./options')
     throw new Error "Provided parseProfile is not a function" unless typeof parse_profile == 'function'
     
     displayType = @options.display
-    successPath = @options.successPath or 'home'
+    successPath = @options.successPath
     errorPath   = @options.errorPath
-    sessionKey  = @options.sessionKey || 'oauth'
-    
-    (req, res, next) ->
-    
-      onError = (error) ->
-        if errorPath
-          res.redirect errorPath
-        else
-          # TODO: wrap to OAuth2.Error
-          next(error)
+    sessionKey  = @options.sessionKey
 
-      onSuccess = (auth) ->
-        if session = req.session
-          session[sessionKey] = auth
-          session.save()
+    onError = (res, next, error) ->
+      if errorPath
+        res.redirect errorPath
+      else
+        # TODO: wrap to OAuth2.Error
+        next(error)
+
+    onSuccess = (req, res, next, oauth, profile) ->
+      oauth.profile = profile
+      if sessionKey && session = req.session
+        session[sessionKey] = oauth
+        session.save()
+      else
+        req.oauth = oauth
+      if successPath
         res.redirect successPath
-        
+      else
+        next()
+
+    (req, res, next) ->
       url = URL.parse(req.url, true)
       query = url.query
       
       if query.error
         # We've got error from provider: user did cancel authorization, etc.
         # TODO: create OAuth2.Error
-        return onError("#{query.error}:#{query.error_reason}: #{query.error_description}")
+        return onError(res, next, "#{query.error}:#{query.error_reason}: #{query.error_description}")
 
       fullUrl = URL.format
         protocol: if req.connection.encrypted then 'https' else 'http'
@@ -71,16 +76,14 @@ module.exports = class Gateway extends require('./options')
         # We've got authorization code from provider, let's get access_token
         return util.perform_request tokenUrl, (error, data) =>
           oauth = util.parse_response_data data if data
-          return onError(error or 'Failed to get access token') if error or !oauth
-          return onError(oauth.error) if oauth.error
+          return onError(res, next, error or 'Failed to get access token') if error or !oauth
+          return onError(res, next, oauth.error) if oauth.error
           # We've got access_token, let's get profile
           util.perform_request util.parse_url(profile_url, oauth), (error, data) ->
-            return onError(error or 'Failed to get user profile') unless data
-            # We've got profile response, let's get profile
+            return onError(res, next, error or 'Failed to get user profile') unless data
             parse_profile data, (error, profile) ->
-              return onError(error or 'Bad profile data received') unless profile
-              oauth.profile = profile
-              onSuccess(oauth)
+              return onError(res, next, error or 'Bad profile data received') unless profile
+              onSuccess(req, res, next, oauth, profile)
 
       # We don't have any expected parameters from provider, just redirect client to provider's authorization dialog page
       dialogQuery.display = displayType or util.dialog_display_type(req)
