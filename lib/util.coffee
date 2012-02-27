@@ -1,6 +1,5 @@
 path   = require 'path'
 fs     = require 'fs'
-crypto = require 'crypto'
 http   = require 'http'
 https  = require 'https'
 Q      = require 'querystring'
@@ -22,12 +21,6 @@ module.exports.normalize_expire = (expire) ->
   return expire
 
 
-module.exports.gen_token = ->
-  crypto.createHash('sha512')
-        .update(crypto.randomBytes(128))
-        .digest('base64')
-
-
 module.exports.load_modules_from_dir = ->
   dir = path.join(arguments...)
   modules = {}
@@ -42,11 +35,9 @@ module.exports.load_modules_from_dir = ->
 
 module.exports.find_oauth_token = (req) ->
   auth = req.header('Authorization')?.split(' ')
-  token = auth[1] if auth?[0] == 'OAuth'
-  unless token
-    url = URL.parse req.url, true if req.url?
-    token = url.query?.oauth_token
-  token
+  (auth[1] if auth?[0] == 'OAuth') or
+  (URL.parse(req.url, true).query?.access_token) or
+  (req.session?.access_token)
 
 
 module.exports.dialog_display_type = (req) ->

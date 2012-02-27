@@ -1,26 +1,31 @@
-redis  = require 'redis'
+crypto = require 'crypto'
 
+gen_token = -> crypto.createHash('sha512').update(crypto.randomBytes(128)).digest('base64')
 token_key = (token) -> "oauth:token:#{token}"
 
-module.exports = class OAuthRedisStorage extends require('../storage')
+module.exports = class Storage extends require('../storage')
   constructor: ->
     super
-    @client = @options.client || redis.createClient(@options.port, @options.host, @options)
-    throw new Error "Please provide client for OAuthRedisStorage or port and host" unless @client
+    @._accessor 'client'
+    @client or= require('redis').createClient()
 
-  persist_token: (token, data, done) ->
-    key = token_key(token)
+  save_token_data: (data, done) ->
+    token = gen_token
+    key = token_key token
     json = JSON.stringify data
-    if data.expire
-      expire = Date.now() - data.expire
+    if data.expire or data.expire_at
+      expire = data.expire or (data.expire_at - Date.now())
       @client.setex key, expire, json, (error) -> done(error, token)
     else
       @client.set key, json, (error) -> done(error, token)
     
-  fetch_token: (token, done) ->
+  get_token_data: (token, done) ->
     @client.get token_key(token), (error, json) ->
       return done(error) if error || !json
       try
         done null, JSON.parse(json)
-      catch err
-        done err
+      catch error
+        done error
+
+  delete_token_data: (token, done) ->
+    @client.del token_key(token), done
