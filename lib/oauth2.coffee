@@ -1,32 +1,19 @@
-connect = require 'connect'
 Guard   = require './guard'
 util    = require './util'
 
 module.exports = class OAuth2 extends require('./options')
   constructor: ->
     super
-    @routes = {}
+    @._accessor 'storage'
 
   guard: (options) ->
-    new Guard(@effective_options options).middleware()
+    new Guard(@_effective options).middleware()
 
   gateway: (name, options) ->
-    OAuth2.gateway(name, @effective_options options).middleware()
-
-  route: (path, name, options) ->
-    @routes[path] = @gateway name, options
-
-  setup_routes: (app) =>
-    Object.keys(@routes).forEach (path) =>
-      app.get path, @routes[path]
-
-  middleware: ->
-    connect.router @setup_routes
+    OAuth2.gateway(name, @_effective options).middleware()
 
 
 OAuth2.Guard = Guard
-OAuth2.guard = (options) -> new Guard(options)
-
 
 OAuth2.Storage = require './storage'
 OAuth2.available_storages = util.load_modules_from_dir __dirname, 'storage'

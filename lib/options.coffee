@@ -10,10 +10,14 @@ module.exports = class Options
   set: (key, value) ->
     return unless key
     if key.constructor == Object
-      @options = @effective_options key
+      @options = @_effective key
     else
       @options[key] = value
     return
 
-  effective_options: (options) ->
-    _.defaults _.clone(options), @options
+  _effective: (options) ->
+    _.defaults _.clone(options or {}), @options
+
+  _accessor: (opt) ->
+    @.__defineGetter__ opt, => @options[opt]
+    @.__defineSetter__ opt, (val) => @options[opt] = val
