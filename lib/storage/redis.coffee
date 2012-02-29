@@ -7,7 +7,7 @@ module.exports = class Storage extends require('../storage')
   constructor: ->
     super
     @._accessor 'client'
-    @client or= require('redis').createClient()
+    throw new Error "Please provide 'client' for RedisStorage" unless @client
 
   save_token_data: (data, done) ->
     token = gen_token
