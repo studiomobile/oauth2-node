@@ -10,7 +10,8 @@ module.exports = class Guard extends require('./options')
     if typeof options == 'function'
       done = options
       options = {}
-    options or= {}
+
+    options = @_effective options
 
     data =
       user_id: user_id
