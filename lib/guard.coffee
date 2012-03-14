@@ -19,7 +19,7 @@ module.exports = class Guard extends require('./options')
       expire: util.normalize_expire(options.expire) if options.expire
       expire_at: util.normalize_expire(options.expire_at) if options.expire_at
 
-    @storage.persist_token_data data, (error, token) ->
+    @storage.save_token_data data, (error, token) ->
       return done?(error) if error
       done?(null, token)
 

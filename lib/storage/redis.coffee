@@ -10,7 +10,7 @@ module.exports = class Storage extends require('../storage')
     throw new Error "Please provide 'client' for RedisStorage" unless @client
 
   save_token_data: (data, done) ->
-    token = gen_token
+    token = gen_token()
     key = token_key token
     json = JSON.stringify data
     if data.expire or data.expire_at
