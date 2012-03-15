@@ -8,10 +8,11 @@ module.exports = class Gateway extends require('../gateway')
 
 Gateway::profile_url = (data) ->
   protocol: 'https'
-  hostname: 'oauth.vk.com'
-  pathname: "/method/getProfiles"
+  hostname: 'api.vk.com'
+  pathname: '/method/users.get'
   query:
     uid: data.user_id
+    fields: 'uid,first_name,last_name,nickname,screen_name,sex,bdate'
     access_token: data.access_token
 
 
