@@ -1,4 +1,5 @@
 util = require './util'
+Err  = require './error'
 
 module.exports = class Guard extends require('./options')
   constructor: ->
@@ -31,34 +32,38 @@ module.exports = class Guard extends require('./options')
     options = @_effective options
     realm   = options.realm || "Server"
     scope   = util.normalize_scope options.scope
-    storage = storage
+    storage = options.storage
 
-    scope_msg = scope.map((scope) -> "'#{scope}'").join(' ')
+    invalid_request    = new Err "Invalid request", code:'invalid_request', realm:realm, scope:scope, status:400
+    invalid_token      = new Err "Invalid token", code:'invalid_token', realm:realm, scope:scope, status:401
+    expired_token      = new Err "Expired token", code:'expired_token', realm:realm, scope:scope, status:401
+    insufficient_scope = new Err "Insufficient scope", code:'insufficient_scope', realm:realm, scope:scope, status:403
 
     check_scope = (token_scope) ->
       token_scope = util.normalize_scope token_scope
       # TODO: implement
       true
 
-    error = (res, code, error) ->
-      res.statusCode = code
-      res.header 'WWW-Authenticate', "OAuth realm='#{realm}', error='#{error}' #{scope_msg}"
-      res.end 'Unauthorized'
-
-    invalid_request    = (res) -> error res, 400, 'invalid_request'
-    invalid_token      = (res) -> error res, 401, 'invalid_token'
-    expired_token      = (res) -> error res, 401, 'expired_token'
-    insufficient_scope = (res) -> error res, 403, 'insufficient_scope'
+    expired = (data) ->
+      data.expire && data.expire < Date.now()
 
     (req, res, next) ->
-      token = util.find_oauth_token req
-      return invalid_request(res) unless token
-      return insufficient_scope(res) if req.oauth?.access_token == token && !check_scope(req.oauth.scope)
+      error = (error) ->
+        res.status = error.status or 401
+        if req.accepts 'application/json'
+          res.json error:error
+        else
+          scope_msg = error.scope.map((scope) -> "'#{scope}'").join(' ')
+          res.header 'WWW-Authenticate', "OAuth realm='#{error.realm}', error='#{error.code}' #{scope_msg}"
+          res.end error.message
 
+      token = util.find_oauth_token req
+      return error invalid_request unless token
+      if req.oauth?.access_token == token
+        return error insufficient_scope unless check_scope req.oauth.scope
       storage.fetch_token_data token, (err, data) ->
-        return invalid_token(res) if !data?.user_id
-        return expired_token(res) if data.expire && data.expire < Date.now()
-        return insufficient_scope(res) if !check_scope(data.scope)
-        data.access_token = token
+        return error invalid_token unless data?.user_id
+        return error expired_token if expired data
+        return error insufficient_scope unless check_scope data.scope
         req.oauth = data
         next()

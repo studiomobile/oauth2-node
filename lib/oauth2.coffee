@@ -14,6 +14,7 @@ module.exports = class OAuth2 extends require('./options')
 
 
 OAuth2.Guard = Guard
+OAuth2.Error = require './error'
 
 OAuth2.Storage = require './storage'
 OAuth2.available_storages = util.load_modules_from_dir __dirname, 'storage'

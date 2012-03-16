@@ -1,5 +1,6 @@
 URL  = require 'url'
 util = require './util'
+OAuth2Error = require './error'
 
 module.exports = class Gateway extends require('./options')
   constructor: ->
@@ -41,14 +42,14 @@ module.exports = class Gateway extends require('./options')
       if errorPath
         res.redirect errorPath
       else
-        # TODO: wrap to OAuth2.Error
-        next(error)
+        error = new OAuth2Error error if typeof error == 'string'
+        next error
 
     onSuccess = (req, res, next, oauth, profile) ->
       oauth.profile = profile
       if sessionKey && session = req.session
         session[sessionKey] = oauth
-        session.save()
+        session.save() if successPath
       else
         req.oauth = oauth
       if successPath
@@ -61,9 +62,7 @@ module.exports = class Gateway extends require('./options')
       query = url.query
       
       if query.error
-        # We've got error from provider: user did cancel authorization, etc.
-        # TODO: create OAuth2.Error
-        return onError(res, next, "#{query.error}:#{query.error_reason}: #{query.error_description}")
+        return onError res, next, new OAuth2Error query.error_description, code:query.error, reason:query.error_reason
 
       fullUrl = URL.format
         protocol: if req.connection.encrypted then 'https' else 'http'
@@ -76,7 +75,7 @@ module.exports = class Gateway extends require('./options')
         # We've got authorization code from provider, let's get access_token
         return util.perform_request tokenUrl, (error, data) =>
           oauth = util.parse_response_data data if data
-          return onError(res, next, error or 'Failed to get access token') if error or !oauth
+          return onError(res, next, error or 'Failed to get access token') unless oauth
           return onError(res, next, oauth.error) if oauth.error
           # We've got access_token, let's get profile
           util.perform_request util.parse_url(profile_url, oauth), (error, data) ->
