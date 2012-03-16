@@ -52,7 +52,7 @@ module.exports = class Guard extends require('./options')
       return next invalid_request unless token
       if req.oauth?.access_token == token
         return next insufficient_scope unless check_scope req.oauth.scope
-      storage.fetch_token_data token, (err, data) ->
+      storage.get_token_data token, (err, data) ->
         return next invalid_token unless data?.user_id
         return next expired_token if expired data
         return next insufficient_scope unless check_scope data.scope
