@@ -58,13 +58,3 @@ module.exports = class Guard extends require('./options')
         return next insufficient_scope unless check_scope data.scope
         req.oauth = data
         next()
-
-Guard.errorHandler = (error, req, res, next) ->
-  return next error unless error instanceof Err
-  res.status = error.status or 401
-  if req.accepts 'application/json'
-    res.json error:error
-  else
-    scope_msg = error.scope.map((scope) -> "'#{scope}'").join(' ')
-    res.header 'WWW-Authenticate', "OAuth realm='#{error.realm}', error='#{error.code}' #{scope_msg}"
-    res.end error.message

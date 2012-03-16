@@ -21,7 +21,7 @@ module.exports = class Storage extends require('../storage')
     
   get_token_data: (token, done) ->
     @client.get token_key(token), (error, json) ->
-      return done(error) if error || !json
+      return done error or "Invalid token" if error or !json
       try
         done null, JSON.parse(json)
       catch error
