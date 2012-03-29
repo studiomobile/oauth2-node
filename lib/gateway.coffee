@@ -57,32 +57,39 @@ module.exports = class Gateway extends require('./options')
       else
         next()
 
+    fetchProfile = (req, res, next, oauth) ->
+      util.perform_request util.parse_url(profile_url, oauth), (error, data) ->
+        return onError(res, next, error or 'Failed to get user profile') unless data
+        parse_profile data, (error, profile) ->
+          return onError(res, next, error or 'Bad profile data received') unless profile
+          onSuccess req, res, next, oauth, profile
+
     (req, res, next) ->
       url = URL.parse(req.url, true)
       query = url.query
       
+      # error response from provider
       if query.error
         return onError res, next, new OAuth2Error query.error_description, code:query.error, reason:query.error_reason
+
+      # authorize with access_token
+      if query.access_token
+        return fetchProfile req, res, next, query
 
       fullUrl = URL.format
         protocol: if req.connection.encrypted then 'https' else 'http'
         hostname: req.headers.host
         pathname: url.pathname
 
+      # authorization code from provider, exchange it to access_token and fetch profile
       if query.code
         tokenQuery.code = query.code
         tokenQuery.redirect_uri = fullUrl
-        # We've got authorization code from provider, let's get access_token
         return util.perform_request tokenUrl, (error, data) =>
           oauth = util.parse_response_data data if data
           return onError(res, next, error or 'Failed to get access token') unless oauth
           return onError(res, next, oauth.error) if oauth.error
-          # We've got access_token, let's get profile
-          util.perform_request util.parse_url(profile_url, oauth), (error, data) ->
-            return onError(res, next, error or 'Failed to get user profile') unless data
-            parse_profile data, (error, profile) ->
-              return onError(res, next, error or 'Bad profile data received') unless profile
-              onSuccess(req, res, next, oauth, profile)
+          fetchProfile req, res, next, oauth
 
       # We don't have any expected parameters from provider, just redirect client to provider's authorization dialog page
       dialogQuery.display = displayType or util.dialog_display_type(req)
