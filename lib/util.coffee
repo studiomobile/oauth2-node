@@ -34,7 +34,7 @@ module.exports.load_modules_from_dir = ->
 
 
 module.exports.find_oauth_token = (req) ->
-  auth = req.header('Authorization')?.split(' ')
+  auth = req.headers['authorization']?.split(' ')
   (auth[1] if auth?[0] == 'OAuth') or
   (URL.parse(req.url, true).query?.access_token) or
   (req.session?.access_token)
