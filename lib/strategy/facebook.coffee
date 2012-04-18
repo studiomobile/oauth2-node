@@ -1,0 +1,28 @@
+module.exports = class Strategy extends require('../strategy')
+  constructor: ->
+    super
+    @regUrl 'dialog', protocol:'http', hostname:'facebook.com', pathname:'/dialog/oauth'
+    @regUrl 'token',  @graphUrl 'oauth/access_token'
+    @regUrl 'profile', (data) -> @graphUrl 'me', access_token:data.access_token
+    @regUrl 'friends', (data) -> @graphUrl 'me/friends', access_token:data.access_token
+
+  graphUrl: (method, query) -> protocol:'https', hostname:'graph.facebook.com', pathname:"/#{method}", query:(query or {})
+
+  parseProfile: (data, done) ->
+    try
+      data = JSON.parse data
+      return done data.error if data.error
+      done null,
+        provider: 'facebook'
+        id: data.id
+        username: data.username
+        displayName: data.name
+        name:
+          familyName: data.last_name
+          givenName: data.first_name
+          middleName: data.middle_name
+        gender: data.gender
+        profileUrl: data.link
+        emails: [value: data.email] if data.email
+    catch error
+      done error

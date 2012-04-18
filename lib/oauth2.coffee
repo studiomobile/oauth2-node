@@ -1,3 +1,4 @@
+Gateway = require './gateway'
 Guard   = require './guard'
 util    = require './util'
 
@@ -9,25 +10,26 @@ module.exports = class OAuth2 extends require('./options')
   guard: (options) ->
     new Guard(@_effective options).middleware()
 
-  gateway: (name, options) ->
-    OAuth2.gateway(name, @_effective options).middleware()
+  gateway: (type, options) ->
+    strategy = OAuth2.strategy type
+    new Gateway(strategy, @_effective options).middleware()
 
 
-OAuth2.Guard = Guard
-OAuth2.Error = require './error'
+OAuth2.Gateway = Gateway
+OAuth2.Guard   = Guard
+OAuth2.Error   = require './error'
 
 OAuth2.Storage = require './storage'
 OAuth2.available_storages = util.load_modules_from_dir __dirname, 'storage'
-OAuth2.storage = (name, options) ->
-  Storage = OAuth2.available_storages[name]
-  throw new Error("There is no '#{name}' storage for OAuth2") unless Storage
+OAuth2.storage = (type, options) ->
+  Storage = OAuth2.available_storages[type]
+  throw new Error("There is no '#{type}' storage for OAuth2") unless Storage
   new Storage options
 
-
-OAuth2.Gateway = require './gateway'
-OAuth2.available_gateways = util.load_modules_from_dir __dirname, 'gateway'
-OAuth2.gateway = (name, options) ->
-  Gateway = OAuth2.available_gateways[name]
-  throw new Error("There is no '#{name}' gateway for OAuth2") unless Gateway
-  new Gateway options
+OAuth2.Strategy = require './strategy'
+OAuth2.available_strategies = util.load_modules_from_dir __dirname, 'strategy'
+OAuth2.strategy = (type) ->
+  Strategy = OAuth2.available_strategies[type]
+  throw new Error("There is no '#{type}' strategy for OAuth2") unless Strategy
+  new Strategy
   

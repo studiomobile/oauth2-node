@@ -1,10 +1,11 @@
+Q    = require 'querystring'
 URL  = require 'url'
 util = require './util'
 OAuth2Error = require './error'
 
 module.exports = class Gateway extends require('./options')
-  constructor: ->
-    super
+  constructor: (@strategy, options) ->
+    super options
 
   middleware: ->
     clientID = @options.clientID
@@ -12,27 +13,23 @@ module.exports = class Gateway extends require('./options')
     clientSecret = @options.clientSecret
     throw new Error "Please provide 'clientSecret' option" unless clientSecret
 
-    dialogUrl = util.parse_url(@options.dialogUrl or @dialog_url)
-    throw new Error "Please provide 'dialogUrl' option or implement 'dialog_url' method" unless dialogUrl?.hostname
+    strategy = @strategy
+    throw new Error "Please provide valid strategy" unless strategy?.url?.constructor == Function
+
+    dialogUrl = strategy.url 'dialog'
+    throw new Error "Can't get login dialog url" unless dialogUrl?.hostname
     dialogQuery = dialogUrl.query or= {}
-    dialogQuery.scope = util.normalize_scope(@options.scope).join(@options.scopeSeparator || ' ')
+    dialogQuery.scope = strategy.formatScope @options.scope
     dialogQuery.client_id = clientID
     dialogQuery.response_type = 'code'
 
-    tokenUrl = util.parse_url(@options.tokenUrl or @token_url)
-    throw new Error "Please provide 'tokenUrl' option or implement 'token_url' method" unless tokenUrl?.hostname
+    tokenUrl = strategy.url 'token'
+    throw new Error "Can't get access token url" unless tokenUrl?.hostname
     tokenQuery = tokenUrl.query or= {}
     tokenQuery.grant_type = 'authorization_code'
     tokenQuery.client_id = clientID
     tokenQuery.client_secret = clientSecret
 
-    profile_url = @options.profileUrl or @profile_url
-    throw new Error "Please provide profileUrl" unless profile_url
-
-    parse_profile = @options.parseProfile or @parse_profile
-    throw new Error "Please provide function 'parseProfile' or implement 'parse_profile' method" unless parse_profile
-    throw new Error "Provided parseProfile is not a function" unless typeof parse_profile == 'function'
-    
     displayType = @options.display
     successPath = @options.successPath
     errorPath   = @options.errorPath
@@ -58,11 +55,9 @@ module.exports = class Gateway extends require('./options')
         next()
 
     fetchProfile = (req, res, next, oauth) ->
-      util.perform_request util.parse_url(profile_url, oauth), (error, data) ->
-        return onError(res, next, error or 'Failed to get user profile') unless data
-        parse_profile data, (error, profile) ->
-          return onError(res, next, error or 'Bad profile data received') unless profile
-          onSuccess req, res, next, oauth, profile
+      strategy.fetchProfile oauth, (error, profile) ->
+        return onError res, next, error unless profile
+        onSuccess req, res, next, oauth, profile
 
     (req, res, next) ->
       url = URL.parse(req.url, true)
@@ -76,7 +71,7 @@ module.exports = class Gateway extends require('./options')
       if query.access_token
         return fetchProfile req, res, next, query
 
-      fullUrl = URL.format
+      redirectUrl = URL.format
         protocol: if req.connection.encrypted then 'https' else 'http'
         hostname: req.headers.host
         pathname: url.pathname
@@ -84,14 +79,21 @@ module.exports = class Gateway extends require('./options')
       # authorization code from provider, exchange it to access_token and fetch profile
       if query.code
         tokenQuery.code = query.code
-        tokenQuery.redirect_uri = fullUrl
-        return util.perform_request tokenUrl, (error, data) =>
-          oauth = util.parse_response_data data if data
+        tokenQuery.redirect_uri = redirectUrl
+        return util.perform_request tokenUrl, (error, data) ->
+          oauth = parse_token_data data if data
           return onError(res, next, error or 'Failed to get access token') unless oauth
           return onError(res, next, oauth.error) if oauth.error
           fetchProfile req, res, next, oauth
 
       # We don't have any expected parameters from provider, just redirect client to provider's authorization dialog page
-      dialogQuery.display = displayType or util.dialog_display_type(req)
-      dialogQuery.redirect_uri = fullUrl
+      dialogQuery.display = displayType or strategy.dialogDisplayType(req)
+      dialogQuery.redirect_uri = redirectUrl
       res.redirect URL.format dialogUrl
+
+
+parse_token_data = (data) ->
+  try
+    JSON.parse(data)
+  catch err
+    Q.parse(data)

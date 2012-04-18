@@ -3,9 +3,7 @@ fs     = require 'fs'
 http   = require 'http'
 https  = require 'https'
 Q      = require 'querystring'
-URL    = require 'url'
 _      = require 'underscore'
-UA     = require 'ua-parser'
 
 
 module.exports.normalize_scope = (scope) ->
@@ -33,61 +31,26 @@ module.exports.load_modules_from_dir = ->
   modules
 
 
-module.exports.find_oauth_token = (req) ->
-  auth = req.headers['authorization']?.split(' ')
-  (auth[1] if auth?[0] == 'OAuth') or
-  (URL.parse(req.url, true).query?.access_token) or
-  (req.session?.access_token)
-
-
-module.exports.dialog_display_type = (req) ->
-  ua = UA.parse req.headers['user-agent']
-  switch ua.family
-    when 'iPhone' then 'touch'
-    else 'page'
-
-
-module.exports.parse_url = (url, data) ->
-  switch typeof url
-    when 'string'
-      URL.parse url.replace(/\{\{(.+?)\}\}/g, ($0, $1) -> data[$1] || ''), true
-    when 'function'
-      url(data)
-    else
-      url
-
-
-module.exports.parse_response_data = (data) ->
-  try
-    JSON.parse(data)
-  catch err
-    Q.parse(data)
-
-
 module.exports.perform_request = (url, done) ->
-  handle_response = (res) ->
-    data = ''
-    res.on 'data', (chunk) ->
-      data += chunk
-    res.addListener 'end', ->
-      done null, data
-
-  post_data = Q.stringify(url.query) if url.method == 'POST' and url.query
+  post_data = Q.stringify(url.query) if url.method?.match /^POST$/i and url.query
   if post_data
-    url.query = undefined
+    delete url.query
     url.headers or= {}
     url.headers['Content-Type'] = 'application/x-www-form-urlencoded'
     url.headers['Content-Length'] = post_data.length
 
   protocol = http
-  if url.protocol == 'https:' or url.protocol == 'https'
+  if url.protocol?.match /^https/i
     protocol = https
     url.protocol = null
 
   url.path = url.pathname
   url.path = url.path + '?' + Q.stringify(url.query) if url.query
 
-  req = protocol.request url, handle_response
-  req.on 'error', (err) -> done err
-  req.write(post_data) if post_data
+  req = protocol.request url, (res) ->
+    data = ''
+    res.on 'data', (chunk) -> data += chunk
+    res.on 'end', -> done null, data
+  req.on 'error', done
+  req.write post_data if post_data
   req.end()
