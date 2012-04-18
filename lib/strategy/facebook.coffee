@@ -9,20 +9,19 @@ module.exports = class Strategy extends require('../strategy')
   graphUrl: (method, query) -> protocol:'https', hostname:'graph.facebook.com', pathname:"/#{method}", query:(query or {})
 
   parseProfile: (data, done) ->
-    try
-      data = JSON.parse data
-      return done data.error if data.error
-      done null,
-        provider: 'facebook'
-        id: data.id
-        username: data.username
-        displayName: data.name
-        name:
-          familyName: data.last_name
-          givenName: data.first_name
-          middleName: data.middle_name
-        gender: data.gender
-        profileUrl: data.link
-        emails: [value: data.email] if data.email
-    catch error
-      done error
+    done null,
+      provider: 'facebook'
+      id: data.id
+      username: data.username
+      displayName: data.name
+      name:
+        familyName: data.last_name
+        givenName: data.first_name
+        middleName: data.middle_name
+      gender: data.gender
+      profileUrl: data.link
+      emails: [value: data.email] if data.email
+
+  validateResponse: (resp, done) ->
+    return done resp.error if resp.error
+    done null, (resp.data or resp)

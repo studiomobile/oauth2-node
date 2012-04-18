@@ -28,27 +28,45 @@ module.exports = class Strategy extends require('./options')
     self = @
     util.perform_request @url('profile', oauth), (error, data) ->
       return done(error or 'Failed to get user profile') unless data
-      self.parseProfile data, (error, profile) ->
-        return done(error or 'Bad profile data received') unless profile
-        done null, profile
+      self.json data, done, self.parseProfile
 
   fetchFriends: (oauth, done) ->
     self = @
     util.perform_request @url('friends', oauth), (error, data) ->
       return done(error or 'Failed to get friends') unless data
-      profiles = []
-      last_error = null
-      for prof in data
-        self.parseProfile prof, (error, profile) ->
-          last_error = error if error
-          profiles.push profile if profile
-      return done last_error unless profiles.length
-      done null, profiles
+      self.json data, done, self.parseProfiles
 
   parseProfile: (data, done) -> done "parseProfile not implemented"
+
+  parseProfiles: (data, done) ->
+    profiles = []
+    last_error = null
+    for prof in data
+      @parseProfile prof, (error, profile) ->
+        last_error = error if error
+        profiles.push profile if profile
+    return done last_error unless profiles.length
+    done null, profiles
 
   dialogDisplayType: (req) ->
     ua = UA.parse req.headers['user-agent']
     switch ua.family
       when 'iPhone' then 'touch'
       else 'page'
+
+  json: (json, done, next) ->
+    self = @
+    try
+      resp = JSON.parse json
+      @validateResponse resp, (error, data) ->
+        return done error if error
+        try
+          next.call self, data, done
+        catch error
+          done error
+    catch error
+      done error
+
+  validateResponse: (resp, done) ->
+    return done resp.error if resp.error
+    done null, resp
