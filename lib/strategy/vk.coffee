@@ -22,6 +22,7 @@ module.exports = class Strategy extends require('../strategy')
         familyName: data.last_name
         givenName: data.first_name
       displayName: data.nickname or "#{data.first_name} #{data.last_name}"
+      profileUrl: "http://vk.com/id#{data.uid}"
 
   validateResponse: (resp, done) ->
     return done resp.error if resp.error
