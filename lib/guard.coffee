@@ -1,3 +1,4 @@
+URL  = require 'url'
 util = require './util'
 Err  = require './error'
 
