@@ -49,7 +49,7 @@ module.exports = class Guard extends require('./options')
       data.expire && data.expire < Date.now()
 
     (req, res, next) ->
-      token = find_oauth_token req
+      token = Guard.findOAuthToken req
       return next invalid_request unless token
       if req.oauth?.access_token == token
         return next insufficient_scope unless check_scope req.oauth.scope
@@ -61,7 +61,7 @@ module.exports = class Guard extends require('./options')
         next()
 
 
-find_oauth_token = (req) ->
+Guard.findOAuthToken = (req) ->
   auth = req.headers['authorization']?.split(' ')
   (auth[1] if auth?[0] == 'OAuth') or
   (URL.parse(req.url, true).query?.access_token) or
