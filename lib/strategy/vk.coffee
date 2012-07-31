@@ -11,6 +11,7 @@ module.exports = class Strategy extends require('../strategy')
 
   parseProfile: (resp, done) ->
     data = if resp.constructor == Array then resp[0] else resp
+    dateParts = data.bdate?.split '.' if /\d+\.\d+\.\d+/.test data.bdate
     done null,
       provider: 'vk'
       id: data.uid
@@ -21,6 +22,7 @@ module.exports = class Strategy extends require('../strategy')
       name:
         familyName: data.last_name
         givenName: data.first_name
+      bdate: new Date dateParts[2], dateParts[1], dateParts[0] if dateParts
       displayName: data.nickname or "#{data.first_name} #{data.last_name}"
       profileUrl: "http://vk.com/id#{data.uid}"
 
