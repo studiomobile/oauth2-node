@@ -71,12 +71,9 @@ module.exports = class Gateway extends require('./options')
       if query.access_token
         return fetchProfile req, res, next, query
 
-      hostparts = req.headers.host.split ':' if req.headers.host.indexOf('[') == -1
-
       redirectUrl = URL.format
         protocol: if req.connection.encrypted then 'https' else 'http'
-        hostname: hostparts?[0] or req.headers.host
-        port:     hostparts?[1]
+        host:     req.headers.host
         pathname: url.pathname
 
       # authorization code from provider, exchange it to access_token and fetch profile
