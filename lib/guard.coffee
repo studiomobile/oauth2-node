@@ -1,6 +1,7 @@
-URL  = require 'url'
-util = require './util'
-Err  = require './error'
+URL    = require 'url'
+crypto = require 'crypto'
+util   = require './util'
+Err    = require './error'
 
 module.exports = class Guard extends require('./options')
   constructor: ->
@@ -15,8 +16,11 @@ module.exports = class Guard extends require('./options')
 
     options = @_effective options
 
+    gen_token = -> crypto.createHash('sha512').update(crypto.randomBytes(128)).digest('base64')
+
     data =
       user_id: user_id
+      key: gen_token()
       scope: util.normalize_scope(options.scope).join(',')
       expire: util.normalize_expire(options.expire) if options.expire
       expire_at: util.normalize_expire(options.expire_at) if options.expire_at
