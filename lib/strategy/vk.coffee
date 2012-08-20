@@ -22,7 +22,7 @@ module.exports = class Strategy extends require('../strategy')
       name:
         familyName: data.last_name
         givenName: data.first_name
-      bdate: new Date dateParts[2], dateParts[1], dateParts[0], 12 if dateParts
+      bdate: new Date dateParts[2], dateParts[1]-1, dateParts[0], 12 if dateParts
       displayName: data.nickname or "#{data.first_name} #{data.last_name}"
       profileUrl: "http://vk.com/id#{data.uid}"
 
