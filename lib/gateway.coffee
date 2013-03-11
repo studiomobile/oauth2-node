@@ -1,147 +1,76 @@
-Q    = require 'querystring'
-URL  = require 'url'
-util = require './util'
+UA  = require 'ua-parser'
+URL = require 'url'
 OAuth2Error = require './error'
 
 
-module.exports = class Gateway extends require('./options')
-  constructor: (@strategy, options) ->
-    super options
+module.exports = class Gateway
+  constructor: (@strategy) ->
+
 
   middleware: ->
-    config  = @getConfig()
-    handler = if @strategy?.version == '1.0a' then @_oauth1 else @_oauth2
-    (req, res, next) ->
+    strategy = @strategy
+    handler  = if strategy.version == '1.0a' then @_oauth1 else @_oauth2
+
+    onError = (next, error) ->
+      error = new OAuth2Error error if typeof error == 'string'
+      next error
+
+    fetchProfile = (req, oauth, done) ->
+      strategy.fetchProfile oauth, (error, profile) ->
+        return done error or 'Failed to fetch profile' unless profile
+        oauth.profile = profile
+        req.oauth = oauth
+        done null
+
+    (req, res, next) =>
+      done = (error, oauth, redirect) ->
+        return onError next, error if error
+        return res.redirect URL.format redirect if redirect
+        fetchProfile req, oauth, (error) ->
+          return onError next, error if error
+          next()
+
       url = URL.parse req.url, true
-      handler config, req, url, res, next
-
-
-  _oauth2: (config, req, url, res, next) ->
-      query = url.query
-      # error response from provider
-      if query.error
-        return config.onError res, next, new OAuth2Error query.error_description, code:query.error, reason:query.error_reason
-      # authorize with access_token
-      if query.access_token
-        return config.fetchProfile req, res, next, query
-      redirectUrl = URL.format
+      return done null, url.query if url.query.access_token # authorize with given access_token
+      redirect = URL.format
         protocol: if req.connection.encrypted then 'https' else 'http'
         host:     req.headers.host
         pathname: url.pathname
-      # authorization code from provider, exchange it to access_token and fetch profile
+      handler.call @, strategy, url.query, redirect, req, done
+
+
+  _oauth2: (strategy, query, redirect, req, done) ->
+      # error response from provider
+      if query.error
+        return done new OAuth2Error query.error_description, code:query.error, reason:query.error_reason
+      # authorization code from provider, exchange it to access_token
       if query.code
-        return util.perform_request config.prepareTokenUrl(query.code, redirectUrl), (error, data) ->
-          oauth = parse_token_data data if data
-          return config.onError(res, next, error or 'Failed to get access token') unless oauth
-          return config.onError(res, next, oauth.error) if oauth.error
-          config.fetchProfile req, res, next, oauth
+        return strategy.fetchAccessToken query.code, redirect:redirect, (error, tokenData) ->
+          return done error or 'Failed to get access token' unless tokenData
+          done null, tokenData
       # We don't have any expected parameters from provider, just redirect client to provider's authorization dialog page
-      res.redirect URL.format config.prepareDialogUrl(req, redirectUrl)
+      strategy.prepareDialogUrl redirect:redirect, display:dialogDisplayType(req), (error, dialogUrl) ->
+        return done error or 'Failed to get dialog url' unless dialogUrl
+        done null, null, dialogUrl
 
 
-  _oauth1: (config, req, url, res, next) ->
-    query = url.query
-    client = config.client
-    return config.onError res, next, 'Canceled by user' if query.denied
-    # verification code from provider, exchange it to access_token and fetch profile
-    if query.oauth_verifier
-      requestToken = req.session.oauthRequestToken
-      requestTokenSecret = req.session.oauthRequestTokenSecret
-      return client.getOAuthAccessToken requestToken, requestTokenSecret, query.oauth_verifier, (error, accessToken, accessTokenSecret, results) ->
-        return config.onError(res, next, error or 'Failed to get access token') unless accessToken
-        config.fetchProfile req, res, next, access_token:accessToken, access_token_secret:accessTokenSecret
-    # We don't have verifier from provider, get oauth request token
-    client._authorize_callback = URL.format
-      protocol: if req.connection.encrypted then 'https' else 'http'
-      host:     req.headers.host
-      pathname: url.pathname
-    return client.getOAuthRequestToken (error, requestToken, requestTokenSecret, results) ->
-      return config.onError(res, next, error or 'Failed to get request token') unless requestToken
-      req.session.oauthRequestToken = requestToken
-      req.session.oauthRequestTokenSecret = requestTokenSecret
-      res.redirect URL.format config.prepareDialogUrl(requestToken)
+  _oauth1: (strategy, query, redirect, req, done) ->
+    return done 'Canceled by user' if query.denied
+    # got verification code from provider and have request dialog data, exchange it to access_token
+    if query.oauth_verifier and dialogData = req.session.oauthRequestDialogData
+      delete req.session.oauthRequestDialogData
+      return strategy.fetchAccessToken query.oauth_verifier, dialogData, (error, tokenData) =>
+        return done error or 'Failed to get access token' unless tokenData
+        done null, tokenData
+    # We don't have verifier from provider and prepared dialog in session, lets display dialog
+    strategy.prepareDialogUrl redirect:redirect, (error, dialogUrl, dialogData) =>
+      return done error or 'Failed to get dialog url' unless dialogData
+      req.session.oauthRequestDialogData = dialogData
+      done null, null, dialogUrl
 
 
-  getConfig: ->
-    config = {}
-    strategy = config.strategy = @strategy
-    throw new Error "Please provide valid strategy" unless strategy?.url?.constructor == Function
-    clientSecret = @options.clientSecret
-    throw new Error "Please provide 'clientSecret' option" unless clientSecret
-    dialogUrl = strategy.url 'dialog'
-    throw new Error "Can't get login dialog url" unless dialogUrl?.hostname
-    tokenUrl = strategy.url 'token'
-    throw new Error "Can't get access token url" unless tokenUrl?.hostname
-
-    successPath = @options.successPath
-    errorPath   = @options.errorPath
-    sessionKey  = @options.sessionKey
-
-    config.onError = (res, next, error) ->
-      if errorPath
-        res.redirect errorPath
-      else
-        error = new OAuth2Error error if typeof error == 'string'
-        next error
-
-    config.onSuccess = (req, res, next, oauth, profile) ->
-      oauth.profile = profile
-      if sessionKey && session = req.session
-        session[sessionKey] = oauth
-        session.save() if successPath
-      else
-        req.oauth = oauth
-      if successPath
-        res.redirect successPath
-      else
-        next()
-
-    config.fetchProfile = (req, res, next, oauth) ->
-      strategy.fetchProfile oauth, (error, profile) ->
-        return config.onError res, next, error unless profile
-        config.onSuccess req, res, next, oauth, profile
-
-    if strategy.version == '1.0a'
-      clientKey = @options.clientKey
-      throw new Error "Please provide 'clientKey' option" unless clientKey
-      requestUrl = strategy.url 'request'
-      throw new Error "Can't get token request url" unless requestUrl?.hostname
-
-      config.client = strategy.getOAuthClient URL.format(requestUrl), URL.format(tokenUrl), clientKey, clientSecret
-
-      config.prepareDialogUrl = (token) ->
-        dialogUrl.query = oauth_token:token
-        return dialogUrl
-
-    else
-      clientID = @options.clientID
-      throw new Error "Please provide 'clientID' option" unless clientID
-      displayType = @options.display
-      scope = strategy.formatScope @options.scope
-
-      config.prepareDialogUrl = (req, redirectUrl) ->
-        dialogUrl.query =
-          scope: scope
-          client_id: clientID
-          response_type: 'code'
-          display: displayType or strategy.dialogDisplayType(req)
-          redirect_uri: redirectUrl
-        return dialogUrl
-
-      config.prepareTokenUrl = (accessCode, redirectUrl) ->
-        tokenUrl.query =
-          grant_type: 'authorization_code'
-          client_id: clientID
-          client_secret: clientSecret
-          code: accessCode
-          redirect_uri: redirectUrl
-        return tokenUrl
-
-    return config
-
-
-parse_token_data = (data) ->
-  try
-    JSON.parse(data)
-  catch err
-    Q.parse(data)
+dialogDisplayType = (req) ->
+  ua = UA.parse req.headers['user-agent']
+  switch ua.family
+    when 'iPhone' then 'touch'
+    else 'page'

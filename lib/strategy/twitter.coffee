@@ -1,18 +1,16 @@
 URL   = require 'url'
 oauth = require 'oauth'
+request = require 'request'
 
-module.exports = class Strategy extends require('../strategy')
+module.exports = class Strategy extends require('../strategy_1.0a')
   constructor: ->
     super
     @version = '1.0a'
     @regUrl 'request', 'https://twitter.com/oauth/request_token'
     @regUrl 'dialog', 'https://twitter.com/oauth/authenticate'
     @regUrl 'token', 'https://twitter.com/oauth/access_token'
-    @regUrl 'profile', 'http://api.twitter.com/1/account/verify_credentials.json'
-
-
-  getOAuthClient: (requestUrl, tokenUrl, clientKey, clientSecret) ->
-    @client = new oauth.OAuth(requestUrl, tokenUrl, clientKey, clientSecret, "1.0A", undefined, "HMAC-SHA1")
+    @regUrl 'profile', 'https://api.twitter.com/1.1/account/verify_credentials.json'
+    @regUrl 'friends', 'https://api.twitter.com/1.1/friends/list.json'
 
 
   parseProfile: (data, done) ->
@@ -24,8 +22,18 @@ module.exports = class Strategy extends require('../strategy')
       profileUrl: "https://twitter.com/#{data.screen_name}"
 
 
-  fetchProfile: (oauth, done) ->
-    profileUrl = URL.format @url('profile')
-    @client.get profileUrl, oauth.access_token, oauth.access_token_secret, (error, data, response) =>
-      return done error if error
-      @json data, done, @parseProfile
+  fetchFriends: (tokenData, done) ->
+    oauth = @prepareOAuth tokenData
+    friendsUrl = @url 'friends'
+    friendsUrl.query or= {}
+    friendsData = []
+    fetchFriendsPage = (cursor) =>
+      friendsUrl.query.cursor = cursor
+      request.get url:URL.format(friendsUrl), oauth:oauth, json:true, (error, response, data) =>
+        return done error if error
+        @validateResponse data, (error, data) =>
+          return done error if error
+          friendsData.concat data.users
+          return fetchFriendsPage(data.next_cursor_str) if data.next_cursor_str != '0'
+          @parseProfiles friendsData, done
+    fetchFriendsPage -1

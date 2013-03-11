@@ -11,8 +11,8 @@ module.exports = class OAuth2 extends require('./options')
     new Guard(@_effective options).middleware()
 
   gateway: (type, options) ->
-    strategy = OAuth2.strategy type
-    new Gateway(strategy, @_effective options).middleware()
+    strategy = OAuth2.strategy type, options
+    new Gateway(strategy).middleware()
 
 
 OAuth2.Gateway = Gateway
@@ -28,8 +28,8 @@ OAuth2.storage = (type, options) ->
 
 OAuth2.Strategy = require './strategy'
 OAuth2.available_strategies = util.load_modules_from_dir __dirname, 'strategy'
-OAuth2.strategy = (type) ->
+OAuth2.strategy = (type, options) ->
   Strategy = OAuth2.available_strategies[type]
   throw new Error("There is no '#{type}' strategy for OAuth2") unless Strategy
-  new Strategy
+  new Strategy options
   

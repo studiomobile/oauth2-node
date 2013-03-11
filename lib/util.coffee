@@ -50,7 +50,7 @@ module.exports.perform_request = (url, done) ->
   req = protocol.request url, (res) ->
     data = ''
     res.on 'data', (chunk) -> data += chunk
-    res.on 'end', -> done null, data
+    res.on 'end', -> done null, data, res
   req.on 'error', done
   req.write post_data if post_data
   req.end()
