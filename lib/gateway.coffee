@@ -18,8 +18,8 @@ module.exports = class Gateway
     fetchProfile = (req, oauth, next) ->
       strategy.fetchProfile oauth, (error, profile) ->
         return onError next, error or 'Failed to fetch profile' unless profile
-        oauth.profile = profile
         req.oauth = oauth
+        req.oauth_profile = profile
         next null
 
     (req, res, next) =>
