@@ -1,7 +1,7 @@
-URL   = require 'url'
-oauth = require 'oauth'
+URL = require 'url'
+Err = require '../error'
 request = require 'request'
-Err   = require '../error'
+
 
 module.exports = class Strategy extends require('../strategy_1.0a')
   constructor: ->
