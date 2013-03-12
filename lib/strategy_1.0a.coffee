@@ -4,9 +4,10 @@ request = require 'request'
 
 
 module.exports = class Strategy extends require('./strategy')
-
   constructor: ->
     super
+    @version = '1.0a'
+
 
   prepareDialogUrl: (options, done) ->
     oauth =
@@ -20,29 +21,24 @@ module.exports = class Strategy extends require('./strategy')
       dialogUrl = @url 'dialog'
       dialogUrl.query or= {}
       dialogUrl.query.oauth_token = tokenData.oauth_token
-      done null, dialogUrl, {request_token:tokenData.oauth_token, request_token_secret:tokenData.oauth_token_secret}
+      done null, dialogUrl, tokenData
 
 
-  fetchAccessToken: (verifier, dialog, done) ->
-    oauth =
-      consumer_key: @get 'clientKey'
-      consumer_secret: @get 'clientSecret'
-      verifier:verifier
-      token:dialog.request_token
-      token_secret:dialog.request_token_secret
+  fetchAccessToken: (verifier, tokenData, done) ->
+    oauth = @prepareOAuth tokenData
+    oauth.verifier = verifier
     request.post url:URL.format(@url 'token'), oauth:oauth, (error, response, body) ->
       return done error if error
-      tokenData = Q.parse body
-      done null, access_token:tokenData.oauth_token, access_token_secret:tokenData.oauth_token_secret
+      done null, Q.parse body
 
 
   fetchProtectedResource: (name, tokenData, done) ->
     useJson = if @get('useJson') == false then false else true
-    request url:@url(name), oauth:@prepareOAuth(tokenData), json:useJson, (error, resp, data) -> done error, data
+    request url:URL.format(@url name), oauth:@prepareOAuth(tokenData), json:useJson, (error, resp, data) -> done error, data
 
 
   prepareOAuth: (tokenData) ->
     consumer_key: @get 'clientKey'
     consumer_secret: @get 'clientSecret'
-    token: tokenData.access_token
-    token_secret: tokenData.access_token_secret
+    token: tokenData.oauth_token
+    token_secret: tokenData.oauth_token_secret

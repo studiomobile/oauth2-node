@@ -6,3 +6,6 @@ module.exports = class OAuth2Error extends Error
     @reason = options.reason if options?.reason
     @scope  = options.scope if options?.scope
     @status = options.status if options?.status
+
+
+OAuth2Error.Unauthorized = new OAuth2Error 'Unauthorized'

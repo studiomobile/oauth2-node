@@ -1,11 +1,11 @@
 URL   = require 'url'
 oauth = require 'oauth'
 request = require 'request'
+Err   = require '../error'
 
 module.exports = class Strategy extends require('../strategy_1.0a')
   constructor: ->
     super
-    @version = '1.0a'
     @regUrl 'request', 'https://twitter.com/oauth/request_token'
     @regUrl 'dialog', 'https://twitter.com/oauth/authenticate'
     @regUrl 'token', 'https://twitter.com/oauth/access_token'
@@ -33,7 +33,16 @@ module.exports = class Strategy extends require('../strategy_1.0a')
         return done error if error
         @validateResponse data, (error, data) =>
           return done error if error
-          friendsData.concat data.users
+          friendsData.push.apply friendsData, data.users
           return fetchFriendsPage(data.next_cursor_str) if data.next_cursor_str != '0'
           @parseProfiles friendsData, done
     fetchFriendsPage -1
+
+
+  validateResponse: (data, done) ->
+    error = data.error if data.error
+    error = data.errors[0] if data.errors?[0]
+    switch error?.code
+      when 89, 215
+        error = Err.Unauthorized
+    done error, data

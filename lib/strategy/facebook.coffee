@@ -1,3 +1,5 @@
+Err = require '../error'
+
 module.exports = class Strategy extends require('../strategy')
   constructor: ->
     super
@@ -7,6 +9,7 @@ module.exports = class Strategy extends require('../strategy')
     @regUrl 'friends', (data) -> @graphUrl 'me/friends', access_token:data.access_token
 
   graphUrl: (method, query) -> protocol:'https', hostname:'graph.facebook.com', pathname:"/#{method}", query:(query or {})
+
 
   parseProfile: (data, done) ->
     dateParts = data.birthday?.split '/' if /^\d+\/\d+\/\d+$/.test data.birthday
@@ -24,6 +27,10 @@ module.exports = class Strategy extends require('../strategy')
       profileUrl: data.link or "http://facebook.com/#{data.id}"
       emails: [value: data.email] if data.email
 
+
   validateResponse: (resp, done) ->
-    return done resp.error if resp.error
-    done null, (resp.data or resp)
+    error = resp.error if resp.error
+    switch error?.code
+      when 102, 190, 2500
+        error = Err.Unauthorized
+    done error, (resp.data or resp)

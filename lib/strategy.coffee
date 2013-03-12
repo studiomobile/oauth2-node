@@ -51,6 +51,11 @@ module.exports = class Strategy extends require('./options')
         Q.parse data
 
 
+  validateResponse: (resp, done) -> done 'validateResponse not implemented'
+
+  parseProfile: (data, done) -> done "parseProfile not implemented"
+
+
   fetchProtectedResource: (name, tokenData, done) ->
     url = @url name, tokenData
     useJson = if @get('useJson') == false then false else true
@@ -80,9 +85,6 @@ module.exports = class Strategy extends require('./options')
         @parseProfiles data, done
 
 
-  parseProfile: (data, done) -> done "parseProfile not implemented"
-
-
   parseProfiles: (data, done) ->
     profiles = []
     last_error = null
@@ -92,8 +94,3 @@ module.exports = class Strategy extends require('./options')
         profiles.push profile if profile
     return done last_error unless profiles.length
     done null, profiles
-
-
-  validateResponse: (resp, done) ->
-    return done resp.error if resp.error
-    done null, resp
