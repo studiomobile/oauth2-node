@@ -7,6 +7,7 @@ module.exports = class Strategy extends require('../strategy')
     @regUrl 'token',  @graphUrl 'oauth/access_token'
     @regUrl 'profile', (data) -> @graphUrl 'me', access_token:data.access_token
     @regUrl 'friends', (data) -> @graphUrl 'me/friends', access_token:data.access_token
+    @regUrl 'post',    (data) -> @graphUrl "#{data.user_id}/feed", message:data.message, access_token:data.access_token
 
   graphUrl: (method, query) -> protocol:'https', hostname:'graph.facebook.com', pathname:"/#{method}", query:(query or {})
 
@@ -30,7 +31,8 @@ module.exports = class Strategy extends require('../strategy')
 
   validateResponse: (resp, done) ->
     error = resp.error if resp.error
-    switch error?.code
-      when 102, 190, 2500
-        error = Err.Unauthorized
+    code = error?.code
+    switch code
+      when 10, 102, 190, 2500 then error = Err.Unauthorized
+    error = Err.Unauthorized if code >= 200 and code <= 299
     done error, (resp.data or resp)

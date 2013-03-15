@@ -1,7 +1,8 @@
-_    = require 'underscore'
-Q    = require 'querystring'
-URL  = require 'url'
-util = require './util'
+_     = require 'underscore'
+Q     = require 'querystring'
+URL   = require 'url'
+async = require 'async'
+util  = require './util'
 
 module.exports = class Strategy extends require('./options')
   constructor: ->
@@ -51,26 +52,26 @@ module.exports = class Strategy extends require('./options')
         Q.parse data
 
 
-  validateResponse: (resp, done) -> done 'validateResponse not implemented'
-
-  parseProfile: (data, done) -> done "parseProfile not implemented"
-
-
-  fetchProtectedResource: (name, tokenData, done) ->
-    url = @url name, tokenData
+  fetchProtectedResource: (url, tokenData, done) ->
     useJson = if @get('useJson') == false then false else true
-    util.perform_request url, (error, data) ->
+    util.perform_request url, (error, data, resp) ->
       return done error if error
       if useJson
         try
           data = JSON.parse data
         catch err
           return done err
-      done null, data
+      done null, data, resp
+
+
+  postProtectedResource: (url, tokenData, done) ->
+    url.method = 'POST'
+    @fetchProtectedResource url, tokenData, done
 
 
   fetchProfile: (tokenData, done) ->
-    @fetchProtectedResource 'profile', tokenData, (error, data) =>
+    url = @url 'profile', tokenData
+    @fetchProtectedResource url, tokenData, (error, data) =>
       return done(error or 'Failed to get user profile') unless data
       @validateResponse data, (error, data) =>
         return done error if error
@@ -78,19 +79,25 @@ module.exports = class Strategy extends require('./options')
 
 
   fetchFriends: (tokenData, done) ->
-    @fetchProtectedResource 'friends', tokenData, (error, data) =>
+    url = @url 'friends', tokenData
+    @fetchProtectedResource url, tokenData, (error, data) =>
       return done(error or 'Failed to get friends') unless data
       @validateResponse data, (error, data) =>
         return done error if error
         @parseProfiles data, done
 
 
+  postMessage: (user_id, message, tokenData, done) ->
+    url = @url 'post', _.extend tokenData, user_id:user_id, message:message
+    @postProtectedResource url, tokenData, (error, data) =>
+      return done(error or 'Failed to post message') unless data
+      @validateResponse data, done
+
+
+  validateResponse: (resp, done) -> done 'validateResponse not implemented'
+
+  parseProfile: (data, done) -> done "parseProfile not implemented"
+
   parseProfiles: (data, done) ->
-    profiles = []
-    last_error = null
-    for prof in data
-      @parseProfile prof, (error, profile) ->
-        last_error = error if error
-        profiles.push profile if profile
-    return done last_error unless profiles.length
-    done null, profiles
+    parse = @parseProfile.bind @
+    async.map data, parse, done
