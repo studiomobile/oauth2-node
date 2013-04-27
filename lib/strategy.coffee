@@ -72,7 +72,7 @@ module.exports = class Strategy extends require('./options')
   fetchProfile: (tokenData, done) ->
     url = @url 'profile', tokenData
     @fetchProtectedResource url, tokenData, (error, data) =>
-      return done(error or 'Failed to get user profile') unless data
+      return done(error or new Error 'Failed to get user profile') unless data
       @validateResponse data, (error, data) =>
         return done error if error
         @parseProfile data, done
@@ -81,23 +81,28 @@ module.exports = class Strategy extends require('./options')
   fetchFriends: (tokenData, done) ->
     url = @url 'friends', tokenData
     @fetchProtectedResource url, tokenData, (error, data) =>
-      return done(error or 'Failed to get friends') unless data
+      return done(error or new Error 'Failed to get friends') unless data
       @validateResponse data, (error, data) =>
         return done error if error
         @parseProfiles data, done
 
 
-  postMessage: (user_id, message, tokenData, done) ->
-    url = @url 'post', _.extend tokenData, user_id:user_id, message:message
+  postMessageTo: (user_id, message, tokenData, done) ->
+    url = @url 'postTo', _.extend tokenData, user_id:user_id, message:message
     @postProtectedResource url, tokenData, (error, data) =>
-      return done(error or 'Failed to post message') unless data
+      return done(error or new Error 'Failed to post message') unless data
       @validateResponse data, done
 
 
-  validateResponse: (resp, done) -> done 'validateResponse not implemented'
+  postMessage: (message, tokenData, done) ->
+    url = @url 'post', _.extend tokenData, message:message
+    @postProtectedResource url, tokenData, (error, data) =>
+      return done(error or new Error 'Failed to post message') unless data
+      @validateResponse data, done
 
-  parseProfile: (data, done) -> done "parseProfile not implemented"
 
-  parseProfiles: (data, done) ->
-    parse = @parseProfile.bind @
-    async.map data, parse, done
+  validateResponse: (resp, done) -> done new Error 'validateResponse not implemented'
+
+  parseProfile: (data, done) -> done new Error "parseProfile not implemented"
+
+  parseProfiles: (data, done) -> async.map data, @parseProfile.bind(@), done

@@ -9,11 +9,12 @@ module.exports = class Strategy extends require('../strategy_1.0a')
     @regUrl 'request', 'https://twitter.com/oauth/request_token'
     @regUrl 'dialog', 'https://twitter.com/oauth/authenticate'
     @regUrl 'token', 'https://twitter.com/oauth/access_token'
-    @regUrl 'profile', -> @apiUrl 'account/verify_credentials'
-    @regUrl 'friends', -> @apiUrl 'followers/list'
-    @regUrl 'post', (data) -> @apiUrl 'direct_messages/new', user_id:data.user_id, text:data.message
+    @regUrl 'profile', -> @_apiUrl 'account/verify_credentials'
+    @regUrl 'friends', -> @_apiUrl 'followers/list'
+    @regUrl 'post',   (data) -> @_apiUrl 'statuses/update', status:data.message.text
+    @regUrl 'postTo', (data) -> @_apiUrl 'direct_messages/new', user_id:data.user_id, text:data.message.text
 
-  apiUrl: (method, query) -> protocol:'https', hostname:'api.twitter.com', pathname:"/1.1/#{method}.json", query:(query or {})
+  _apiUrl: (method, query) -> protocol:'https', hostname:'api.twitter.com', pathname:"/1.1/#{method}.json", query:(query or {})
 
 
   parseProfile: (data, done) ->

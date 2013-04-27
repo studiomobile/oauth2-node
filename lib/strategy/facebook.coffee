@@ -4,12 +4,19 @@ module.exports = class Strategy extends require('../strategy')
   constructor: ->
     super
     @regUrl 'dialog', protocol:'http', hostname:'facebook.com', pathname:'/dialog/oauth'
-    @regUrl 'token',  @graphUrl 'oauth/access_token'
-    @regUrl 'profile', (data) -> @graphUrl 'me', access_token:data.access_token
-    @regUrl 'friends', (data) -> @graphUrl 'me/friends', access_token:data.access_token
-    @regUrl 'post',    (data) -> @graphUrl "#{data.user_id}/feed", message:data.message, access_token:data.access_token
+    @regUrl 'token',  @_graphUrl 'oauth/access_token'
+    @regUrl 'profile', (data) -> @_graphUrl 'me', access_token:data.access_token
+    @regUrl 'friends', (data) -> @_graphUrl 'me/friends', access_token:data.access_token
+    @regUrl 'post',    (data) -> @_graphUrl "me/feed", @_postMessageQuery data
+    @regUrl 'postTo',  (data) -> @_graphUrl "#{data.user_id}/feed", @_postMessageQuery data
 
-  graphUrl: (method, query) -> protocol:'https', hostname:'graph.facebook.com', pathname:"/#{method}", query:(query or {})
+  _graphUrl: (method, query) -> protocol:'https', hostname:'graph.facebook.com', pathname:"/#{method}", query:(query or {})
+
+  _postMessageQuery: (data) ->
+    msg = data.message
+    query = message:msg.text, access_token:data.access_token
+    query.picture = msg.picture if msg.picture
+    query
 
 
   parseProfile: (data, done) ->

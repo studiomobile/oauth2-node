@@ -6,12 +6,20 @@ module.exports = class Strategy extends require('../strategy')
     profileFields = 'uid,first_name,last_name,nickname,screen_name,sex,bdate'
     @regUrl 'dialog', protocol:'http', hostname:'oauth.vk.com', pathname:'/authorize'
     @regUrl 'token', protocol:'https', hostname:'oauth.vk.com', pathname:'/access_token'
-    @regUrl 'profile', (data) -> @apiUrl 'users.get',   uid:data.user_id, fields:profileFields, access_token:data.access_token
-    @regUrl 'friends', (data) -> @apiUrl 'friends.get', uid:data.user_id, fields:profileFields, access_token:data.access_token
-    @regUrl 'post', (data) -> @apiUrl 'wall.post', owner_id:data.user_id, message:data.message, access_token:data.access_token
+    @regUrl 'profile', (data) -> @_apiUrl 'users.get',   uid:data.user_id, fields:profileFields, access_token:data.access_token
+    @regUrl 'friends', (data) -> @_apiUrl 'friends.get', uid:data.user_id, fields:profileFields, access_token:data.access_token
+    @regUrl 'post',    (data) -> @_apiUrl 'wall.post', @_postMessageQuery data
+    @regUrl 'postTo',  (data) -> @_apiUrl 'wall.post', @_postMessageQuery data, data.user_id
 
 
-  apiUrl: (method, query) -> protocol:'https', hostname:'api.vk.com', pathname:"/method/#{method}", query:(query or {})
+  _apiUrl: (method, query) -> protocol:'https', hostname:'api.vk.com', pathname:"/method/#{method}", query:(query or {})
+
+  _postMessageQuery: (data, owner_id) ->
+    msg = data.message
+    query = message:msg.text, access_token:data.access_token
+    query.owner_id = owner_id if owner_id
+    query.attachments = msg.attachments if msg.attachments
+    query
 
 
   parseProfile: (resp, done) ->
