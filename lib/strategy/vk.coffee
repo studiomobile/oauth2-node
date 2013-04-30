@@ -43,6 +43,6 @@ module.exports = class Strategy extends require('../strategy')
   validateResponse: (resp, done) ->
     error = resp.error if resp.error
     switch error?.error_code
-      when 5, 7, 20, 113
+      when 5, 7, 20, 113, 214
         error = Err.Unauthorized
     done error, resp.response
