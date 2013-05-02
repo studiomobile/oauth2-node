@@ -8,4 +8,8 @@ module.exports = class OAuth2Error extends Error
     @status = options.status if options?.status
 
 
-OAuth2Error.Unauthorized = new OAuth2Error 'Unauthorized'
+OAuth2Error.Unauthorized = (message, options = {}) ->
+  options.reason = OAuth2Error.Unauthorized.reason
+  new OAuth2Error message, options
+
+OAuth2Error.Unauthorized.reason = 'Unauthorized'

@@ -44,5 +44,5 @@ module.exports = class Strategy extends require('../strategy')
     error = resp.error if resp.error
     switch error?.error_code
       when 5, 7, 20, 113, 214
-        error = Err.Unauthorized
+        error = Err.Unauthorized error.error_msg, code:error.error_code
     done error, resp.response

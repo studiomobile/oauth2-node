@@ -40,6 +40,8 @@ module.exports = class Strategy extends require('../strategy')
     error = resp.error if resp.error
     code = error?.code
     switch code
-      when 10, 102, 190, 2500 then error = Err.Unauthorized
-    error = Err.Unauthorized if code >= 200 and code <= 299
+      when 10, 102, 190, 2500
+        error = Err.Unauthorized error.message, code:code
+    if code >= 200 and code <= 299
+      error = Err.Unauthorized error.message, code:code 
     done error, (resp.data or resp)
