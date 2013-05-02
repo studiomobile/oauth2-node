@@ -47,6 +47,6 @@ module.exports = class Strategy extends require('../strategy_1.0a')
     error = data.error if data.error
     error = data.errors[0] if data.errors?[0]
     switch error?.code
-      when 89, 215
+      when 32, 89, 215
         error = Err.Unauthorized
     done error, data
