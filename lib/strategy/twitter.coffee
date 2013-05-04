@@ -7,7 +7,7 @@ module.exports = class Strategy extends require('../strategy_1.0a')
   constructor: ->
     super
     @regUrl 'request', 'https://twitter.com/oauth/request_token'
-    @regUrl 'dialog', 'https://twitter.com/oauth/authenticate'
+    @regUrl 'dialog', 'https://twitter.com/oauth/authorize'
     @regUrl 'token', 'https://twitter.com/oauth/access_token'
     @regUrl 'profile', -> @_apiUrl 'account/verify_credentials'
     @regUrl 'friends', -> @_apiUrl 'followers/list'
