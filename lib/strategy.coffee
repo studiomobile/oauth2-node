@@ -88,14 +88,14 @@ module.exports = class Strategy extends require('./options')
 
 
   postMessageTo: (user_id, message, tokenData, done) ->
-    url = @url 'postTo', _.extend tokenData, user_id:user_id, message:message
+    url = @url 'postTo', _.extend {}, tokenData, user_id:user_id, message:message
     @postProtectedResource url, tokenData, (error, data) =>
       return done(error or new Error 'Failed to post message') unless data
       @validateResponse data, done
 
 
   postMessage: (message, tokenData, done) ->
-    url = @url 'post', _.extend tokenData, message:message
+    url = @url 'post', _.extend {}, tokenData, message:message
     @postProtectedResource url, tokenData, (error, data) =>
       return done(error or new Error 'Failed to post message') unless data
       @validateResponse data, done

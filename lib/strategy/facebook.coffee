@@ -1,5 +1,7 @@
 Err = require '../error'
 
+PostFields = 'picture link name caption description source icon type'.split ' '
+
 module.exports = class Strategy extends require('../strategy')
   constructor: ->
     super
@@ -12,10 +14,12 @@ module.exports = class Strategy extends require('../strategy')
 
   _graphUrl: (method, query) -> protocol:'https', hostname:'graph.facebook.com', pathname:"/#{method}", query:(query or {})
 
+  
   _postMessageQuery: (data) ->
     msg = data.message
     query = message:msg.text, access_token:data.access_token
-    query.picture = msg.picture if msg.picture
+    for field in PostFields
+      query[field] = msg[field] if msg[field]
     query
 
 
