@@ -69,13 +69,17 @@ module.exports = class Strategy extends require('./options')
     @fetchProtectedResource url, tokenData, done
 
 
-  fetchProfile: (tokenData, done) ->
+  fetchProfileRaw: (tokenData, done) ->
     url = @url 'profile', tokenData
     @fetchProtectedResource url, tokenData, (error, data) =>
       return done(error or new Error 'Failed to get user profile') unless data
-      @validateResponse data, (error, data) =>
-        return done error if error
-        @parseProfile data, done
+      @validateResponse data, done
+
+
+  fetchProfile: (tokenData, done) ->
+    @fetchProfileRaw tokenData, (error, data) =>
+      return done error if error
+      @parseProfile data, done
 
 
   fetchFriends: (tokenData, done) ->
