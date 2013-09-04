@@ -26,6 +26,7 @@ module.exports = class Strategy extends require('../strategy')
     data = if resp.constructor == Array then resp[0] else resp
     dateParts = data.bdate?.split '.' if /^\d+\.\d+\.\d+$/.test data.bdate
     done null,
+      rawData:data
       provider: 'vk'
       id: data.uid
       gender: switch data.sex

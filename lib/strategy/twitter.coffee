@@ -19,6 +19,7 @@ module.exports = class Strategy extends require('../strategy_1.0a')
 
   parseProfile: (data, done) ->
     done null,
+      rawData:data
       provider: 'twitter'
       id: data.id
       username: data.screen_name

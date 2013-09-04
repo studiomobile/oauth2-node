@@ -26,6 +26,7 @@ module.exports = class Strategy extends require('../strategy')
   parseProfile: (data, done) ->
     dateParts = data.birthday?.split '/' if /^\d+\/\d+\/\d+$/.test data.birthday
     done null,
+      rawData:data
       provider: 'facebook'
       id: data.id
       username: data.username
