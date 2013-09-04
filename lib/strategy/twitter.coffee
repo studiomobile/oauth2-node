@@ -25,6 +25,7 @@ module.exports = class Strategy extends require('../strategy_1.0a')
       username: data.screen_name
       displayName: data.name
       profileUrl: "https://twitter.com/#{data.screen_name}"
+      pictureUrl: data.profile_image_url
 
 
   fetchFriends: (tokenData, done) ->

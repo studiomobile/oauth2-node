@@ -38,6 +38,7 @@ module.exports = class Strategy extends require('../strategy')
       bdate: new Date dateParts[2], dateParts[0]-1, dateParts[1], 12 if dateParts
       gender: data.gender
       profileUrl: data.link or "http://facebook.com/#{data.id}"
+      pictureUrl: "http://graph.facebook.com/#{data.username}/picture"
       emails: [value: data.email] if data.email
 
 

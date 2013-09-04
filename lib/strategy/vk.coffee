@@ -3,7 +3,7 @@ Err = require '../error'
 module.exports = class Strategy extends require('../strategy')
   constructor: ->
     super
-    profileFields = 'uid,first_name,last_name,nickname,screen_name,sex,bdate'
+    profileFields = 'uid,first_name,last_name,nickname,screen_name,sex,bdate,photo,photo_medium,photo_big'
     @regUrl 'dialog', protocol:'http', hostname:'oauth.vk.com', pathname:'/authorize'
     @regUrl 'token', protocol:'https', hostname:'oauth.vk.com', pathname:'/access_token'
     @regUrl 'profile', (data) -> @_apiUrl 'users.get',   uid:data.user_id, fields:profileFields, access_token:data.access_token
@@ -39,6 +39,7 @@ module.exports = class Strategy extends require('../strategy')
       bdate: new Date dateParts[2], dateParts[1]-1, dateParts[0], 12 if dateParts
       displayName: data.nickname or "#{data.first_name} #{data.last_name}"
       profileUrl: "http://vk.com/id#{data.uid}"
+      pictureUrl: data.photo_big or data.photo_medium or data.photo
 
 
   validateResponse: (resp, done) ->
