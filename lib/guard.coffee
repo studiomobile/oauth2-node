@@ -38,6 +38,7 @@ module.exports = class Guard extends require('./options')
     realm   = options.realm || "Server"
     scope   = util.normalize_scope options.scope
     storage = options.storage
+    debug   = options.debug || { warn:(->) }
 
     invalid_request    = new Err "Invalid request", code:'invalid_request', realm:realm, scope:scope, status:400
     invalid_token      = new Err "Invalid token", code:'invalid_token', realm:realm, scope:scope, status:401
@@ -50,18 +51,21 @@ module.exports = class Guard extends require('./options')
       true
 
     expired = (data) ->
-      data.expire && data.expire < Date.now()
+      data.expire < Date.now() if data.expire
 
     (req, res, next) ->
       token = Guard.findOAuthToken req
+      debug.warn "Verifying oauth token from client", req.ip, token
       return next invalid_request unless token
       if req.oauth?.access_token == token
         return next insufficient_scope unless check_scope req.oauth.scope
       storage.get_token_data token, (err, data) ->
+        debug.warn "Got token data from client", req.ip, data
         return next invalid_token unless data?.user_id
         return next expired_token if expired data
         return next insufficient_scope unless check_scope data.scope
         req.oauth = data
+        debug.warn "Token data from client is valid", req.ip
         next()
 
 
