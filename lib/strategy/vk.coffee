@@ -12,7 +12,11 @@ module.exports = class Strategy extends require('../strategy')
     @regUrl 'postTo',  (data) -> @_apiUrl 'wall.post', @_postMessageQuery data, data.user_id
 
 
-  _apiUrl: (method, query) -> protocol:'https', hostname:'api.vk.com', pathname:"/method/#{method}", query:(query or {})
+  _apiUrl: (method, query) ->
+    protocol:'https',
+    hostname:'api.vk.com',
+    pathname:"/method/#{method}",
+    query:(Object.assign {v:'3.5'}, query or {})
 
   _postMessageQuery: (data, owner_id) ->
     msg = data.message
